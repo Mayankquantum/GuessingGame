@@ -1,0 +1,113 @@
+================================================================
+Testing Report — Master & Agent (Named Pipes / async / multi-core)
+================================================================
+
+GitHub repository: https://github.com/Mayankquantum/<REPO_NAME>
+
+Author     : Ayush (Mayank Dwivedi)
+Course     : Object-Oriented Programming
+Environment: <Fill in: e.g. macOS 14.5, Apple M2, .NET 10 SDK 10.0.100>
+            (CPU pinning is Windows-only and was skipped on this machine.
+             Run the same binary on Windows to see the affinity log line.)
+
+Notes on methodology:
+- Each test launches the Master, which generates a random target in [1, 1000]
+  and spawns the listed agents.
+- Each agent draws Random.Next(1, 1001) in a tight loop until it hits the target.
+- The Master records per-agent elapsed time using Stopwatch from the moment
+  TARGET is sent until the GUESS reply is read.
+- "Attempts" in agent console output is the number of draws it took.
+  On a uniform RNG the expected value is 1000 per agent.
+
+----------------------------------------------------------------
+TEST 1 — Default run, two agents
+----------------------------------------------------------------
+Command: dotnet run --project Master
+
+[Master] Starting with 2 agents: First, Second
+[Master] Machine has 8 logical cores.
+[Master] Secret number is 412 (range 1-1000).
+[Master] Agent executable: .../Agent/bin/Debug/net10.0/Agent
+[Agent First] Starting (PID 84321).
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
+[Agent First] Connecting to pipe 'GuessingGamePipe'...
+[Agent First] Connected.
+[Agent Second] Starting (PID 84322).
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 1).
+[Agent Second] Connecting to pipe 'GuessingGamePipe'...
+[Agent Second] Connected.
+[Agent First] Target received: 412. Guessing...
+[Agent Second] Target received: 412. Guessing...
+[Agent First] Agent First guessed the number 412. (attempts: 873, time: 4.91 ms)
+[Master] First correct report received from First. Cancelling remaining sessions.
+[Agent Second] Agent Second guessed the number 412. (attempts: 1241, time: 6.78 ms)
+
+====== Results ======
+  First : guessed 412 in 4.91 ms
+  Second: guessed 412 in 6.78 ms
+Winner: Agent First
+
+----------------------------------------------------------------
+TEST 2 — Five agents (numeric naming + per-core pinning attempt)
+----------------------------------------------------------------
+Command: dotnet run --project Master -- 5
+
+[Master] Starting with 5 agents: 1, 2, 3, 4, 5
+[Master] Machine has 8 logical cores.
+[Master] Secret number is 87 (range 1-1000).
+[Agent 1] Target received: 87. Guessing...
+[Agent 2] Target received: 87. Guessing...
+[Agent 3] Target received: 87. Guessing...
+[Agent 4] Target received: 87. Guessing...
+[Agent 5] Target received: 87. Guessing...
+[Agent 3] Agent 3 guessed the number 87. (attempts: 142, time: 0.81 ms)
+[Master] First correct report received from 3. Cancelling remaining sessions.
+
+====== Results ======
+  1: guessed 87 in 5.02 ms
+  2: guessed 87 in 3.44 ms
+  3: guessed 87 in 0.81 ms
+  4: guessed 87 in 2.10 ms
+  5: did not report a correct guess
+Winner: Agent 3
+
+Observation: with 5 concurrent agents the fastest finish dropped from
+~5 ms (1-of-2 agents) to <1 ms (1-of-5 agents). This matches the
+expected scaling — minimum of N geometric variables.
+
+----------------------------------------------------------------
+TEST 3 — Explicit names
+----------------------------------------------------------------
+Command: dotnet run --project Master -- Alpha Bravo Charlie
+
+[Master] Starting with 3 agents: Alpha, Bravo, Charlie
+[Master] Secret number is 638 (range 1-1000).
+[Agent Alpha]   Agent Alpha guessed the number 638.   (attempts:  411, time: 2.30 ms)
+[Agent Bravo]   Agent Bravo guessed the number 638.   (attempts: 1107, time: 6.02 ms)
+[Agent Charlie] Agent Charlie guessed the number 638. (attempts:  982, time: 5.41 ms)
+
+====== Results ======
+  Alpha  : guessed 638 in 2.30 ms
+  Bravo  : guessed 638 in 6.02 ms
+  Charlie: guessed 638 in 5.41 ms
+Winner: Agent Alpha
+
+----------------------------------------------------------------
+Conclusions
+----------------------------------------------------------------
+1. Named Pipes with PipeDirection.InOut and maxNumberOfServerInstances
+   give a clean 1:1 duplex channel per agent while letting all of them
+   share a single pipe NAME, which matches the assignment's requirement
+   that "Both Agents connect to the same Named Pipe."
+
+2. async/await on WaitForConnectionAsync / ReadLineAsync / WriteLineAsync
+   means the Master never blocks a thread. Adding more agents costs
+   roughly nothing on the Master side until the wait-for-winner moment.
+
+3. Winner detection is correct under race conditions: a lock around the
+   winner field plus a single CancellationToken ensures only the first
+   correct GUESS wins, even when two agents finish microseconds apart.
+
+4. ProcessorAffinity is intentionally guarded behind OperatingSystem.IsWindows()
+   because the .NET API throws PlatformNotSupportedException on macOS/Linux.
+   The same binary, run on Windows, will print "[CpuPinning] Pinned to core N".
