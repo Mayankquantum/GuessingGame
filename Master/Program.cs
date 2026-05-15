@@ -63,7 +63,7 @@ internal static class Program
                     {
                         winner = s;
                         Console.WriteLine($"[Master] First correct report received from {s.Name}. Cancelling remaining sessions.");
-                        cts.Cancel();
+                        
                     }
                 }
                 return Task.CompletedTask;
@@ -72,7 +72,7 @@ internal static class Program
             // Kick off the session loops BEFORE starting the processes,
             // so WaitForConnectionAsync is already pending.
             var sessionTasks = sessions
-                .Select(s => Task.Run(() => s.RunAsync(OnCorrectGuess, cts.Token), cts.Token))
+                .Select(s => Task.Run(() => s.RunAsync(OnCorrectGuess, CancellationToken.None), CancellationToken.None))
                 .ToList();
 
             // Spawn the agent processes. Pass: name, [optional core index].
