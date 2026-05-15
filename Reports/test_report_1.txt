@@ -1,0 +1,23 @@
+=== Test Run 1: 2 agents (default) ===
+[Master] Starting with 2 agents: First, Second
+[Master] Machine has 8 logical cores.
+[Master] Secret number is 850 (range 1-1000).
+[Master] Agent executable: /Users/mayanksdwivedi/Downloads/GuessingGame/Agent/bin/Debug/net10.0/Agent
+[Agent Second] Starting (PID 51021).
+[Agent First] Starting (PID 51020).
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 1).
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
+[Agent First] Connecting to pipe 'GuessingGamePipe'...
+[Agent Second] Connecting to pipe 'GuessingGamePipe'...
+[Agent Second] Connected.
+[Agent First] Connected.
+[Agent Second] Target received: 850. Guessing...
+[Agent First] Target received: 850. Guessing...
+[Agent First] Agent First guessed the number 850. (attempts: 32, time: 0,30 ms)
+[Agent Second] Agent Second guessed the number 850. (attempts: 229, time: 0,59 ms)
+[Master] First correct report received from Second. Cancelling remaining sessions.
+
+====== Results ======
+  First: guessed 850 in 6,68 ms
+  Second: guessed 850 in 6,68 ms
+Winner: Agent Second

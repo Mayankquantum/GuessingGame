@@ -151,28 +151,13 @@ internal static class Program
 
     private static string LocateAgentExecutable()
     {
-        // The Master binary lives at .../Master/bin/<Config>/net10.0/Master(.exe)
-        // The Agent binary lives at the parallel path under Agent/.
-        string masterDir = AppContext.BaseDirectory;
-        string? configDir = Path.GetDirectoryName(masterDir.TrimEnd(Path.DirectorySeparatorChar));   // net10.0
-        string? binDir    = Path.GetDirectoryName(configDir);                                       // Debug / Release
-        string? projDir   = Path.GetDirectoryName(binDir);                                          // Master
-        string? rootDir   = Path.GetDirectoryName(projDir);                                         // GuessingGame
-
-        if (rootDir is null || configDir is null || binDir is null)
-            throw new InvalidOperationException("Cannot locate Agent executable from Master path.");
-
-        string config    = Path.GetFileName(binDir)!;     // "Debug" or "Release"
-        string framework = Path.GetFileName(configDir)!;  // "net10.0"
-
-        string exeName = OperatingSystem.IsWindows() ? "Agent.exe" : "Agent";
+        string masterDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        string rootDir = Path.GetFullPath(Path.Combine(masterDir, "..", "..", "..", ".."));
+        string framework = Path.GetFileName(masterDir);
+        string config    = Path.GetFileName(Path.GetDirectoryName(masterDir));
+        string exeName   = OperatingSystem.IsWindows() ? "Agent.exe" : "Agent";
         string candidate = Path.Combine(rootDir, "Agent", "bin", config, framework, exeName);
-
         if (!File.Exists(candidate))
-            throw new FileNotFoundException(
-                $"Agent executable not found at expected location. Build the Agent project first.",
-                candidate);
-
+            throw new FileNotFoundException("Agent executable not found.", candidate);
         return candidate;
-    }
-}
+    }}
