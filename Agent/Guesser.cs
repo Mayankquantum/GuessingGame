@@ -1,47 +1,81 @@
+using System.Diagnostics;
+using System.IO.Pipes;
 using Shared;
 
 namespace Agent;
 
 /// <summary>
-/// Encapsulates the guessing loop so the Program class stays small.
-/// Uses a per-instance Random seeded from a high-entropy source — important
-/// because two agents started in the same millisecond would otherwise
-/// produce identical sequences with the legacy default seed.
+/// Agent-side client. Connects to the Master's named pipe, receives the
+/// target number, and brute-forces uniform random guesses in
+/// [MinNumber..MaxNumber] until it hits the target. Reports the result
+/// (with the attempt count) back through the same pipe.
 /// </summary>
 public sealed class Guesser
 {
-    private readonly Random _rng;
-    private readonly int _min;
-    private readonly int _max;
+    private const int ConnectTimeoutMs = 15_000;
+    private readonly string _name;
 
-    public Guesser(int seed, int min = Protocol.MinNumber, int max = Protocol.MaxNumber)
+    public Guesser(string name)
     {
-        _rng = new Random(seed);
-        _min = min;
-        _max = max;
+        _name = name ?? throw new ArgumentNullException(nameof(name));
     }
 
-    /// <summary>
-    /// Repeatedly draws from [min, max] until a value matches the target.
-    /// Yields each guess so the caller can either send it on the wire or just count attempts.
-    /// </summary>
-    public IEnumerable<int> Guesses()
+    public async Task RunAsync()
     {
-        while (true)
-            yield return _rng.Next(_min, _max + 1);
-    }
+        Console.WriteLine($"[Agent {_name}] Starting (PID {Environment.ProcessId}). Connecting to pipe '{Protocol.PipeName}'...");
 
-    /// <summary>
-    /// Convenience wrapper: keeps drawing until the target is hit, returns attempts taken.
-    /// </summary>
-    public int GuessUntil(int target)
-    {
-        int attempts = 0;
-        foreach (int g in Guesses())
+        using var pipe = new NamedPipeClientStream(
+            serverName: ".",
+            pipeName:   Protocol.PipeName,
+            direction:  PipeDirection.InOut,
+            options:    PipeOptions.Asynchronous);
+
+        await pipe.ConnectAsync(ConnectTimeoutMs).ConfigureAwait(false);
+
+        using var reader = new StreamReader(pipe, leaveOpen: true);
+        using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
+
+        Console.WriteLine($"[Agent {_name}] Connected. Awaiting target...");
+
+        // Receive TARGET|<number>
+        string? line = await reader.ReadLineAsync().ConfigureAwait(false);
+        if (line is null)
         {
-            attempts++;
-            if (g == target) return attempts;
+            Console.WriteLine($"[Agent {_name}] Pipe closed before target arrived. Exiting.");
+            return;
         }
-        return attempts; // unreachable
+
+        var parts = line.Split('|');
+        if (parts.Length < 2 || parts[0] != Protocol.TargetTag || !int.TryParse(parts[1], out int target))
+        {
+            Console.WriteLine($"[Agent {_name}] Malformed target message: '{line}'. Exiting.");
+            return;
+        }
+
+        Console.WriteLine($"[Agent {_name}] Target received: {target}. Guessing in [{Protocol.MinNumber}..{Protocol.MaxNumber}]...");
+
+        // Brute-force loop. A per-process seed avoids identical sequences
+        // when several agents start in the same tick.
+        int seed = unchecked(
+              _name.GetHashCode()
+            ^ Environment.ProcessId
+            ^ Environment.TickCount);
+        var rng = new Random(seed);
+
+        var sw = Stopwatch.StartNew();
+        int attempts = 0;
+        int guess;
+        do
+        {
+            guess = rng.Next(Protocol.MinNumber, Protocol.MaxNumber + 1);
+            attempts++;
+        }
+        while (guess != target);
+        sw.Stop();
+
+        string msg = $"{Protocol.GuessTag}|{_name}|{target}|{attempts}";
+        await writer.WriteLineAsync(msg).ConfigureAwait(false);
+
+        Console.WriteLine($"[Agent {_name}] DONE: guessed {target} in {attempts} attempts ({sw.Elapsed.TotalMilliseconds:F2} ms of pure guessing).");
     }
 }

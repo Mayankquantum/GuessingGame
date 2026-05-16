@@ -1,23 +1,34 @@
-=== Test Run 1: 2 agents (default) ===
-[Master] Starting with 2 agents: First, Second
-[Master] Machine has 8 logical cores.
-[Master] Secret number is 850 (range 1-1000).
+===============================================================
+   Master / Agent guessing race
+   Started   : 2026-05-16 07:15:00 +03:00
+   Agents    : 2  (First, Second)
+   Cores     : 8 logical
+   Range     : [1 .. 1000]
+   Target    : 874
+===============================================================
 [Master] Agent executable: /Users/mayanksdwivedi/Downloads/GuessingGame/Agent/bin/Debug/net10.0/Agent
-[Agent Second] Starting (PID 51021).
-[Agent First] Starting (PID 51020).
-[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 1).
-[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
-[Agent First] Connecting to pipe 'GuessingGamePipe'...
-[Agent Second] Connecting to pipe 'GuessingGamePipe'...
-[Agent Second] Connected.
-[Agent First] Connected.
-[Agent Second] Target received: 850. Guessing...
-[Agent First] Target received: 850. Guessing...
-[Agent First] Agent First guessed the number 850. (attempts: 32, time: 0,30 ms)
-[Agent Second] Agent Second guessed the number 850. (attempts: 229, time: 0,59 ms)
-[Master] First correct report received from Second. Cancelling remaining sessions.
 
-====== Results ======
-  First: guessed 850 in 6,68 ms
-  Second: guessed 850 in 6,68 ms
-Winner: Agent Second
+[Master] Phase 1: awaiting connections from 2 agents...
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 1).
+[Agent Second] Starting (PID 5663). Connecting to pipe 'GuessingGamePipe'...
+[Agent First] Starting (PID 5662). Connecting to pipe 'GuessingGamePipe'...
+[Agent Second] Connected. Awaiting target...
+[Agent First] Connected. Awaiting target...
+[Master] Phase 2: all agents connected. Releasing target 874 simultaneously.
+[Agent Second] Target received: 874. Guessing in [1..1000]...
+[Agent First] Target received: 874. Guessing in [1..1000]...
+[Agent Second] DONE: guessed 874 in 369 attempts (0,09 ms of pure guessing).
+[Agent First] DONE: guessed 874 in 71 attempts (0,08 ms of pure guessing).
+[Master] *** WINNER: Agent Second *** (first correct GUESS received)
+
+================== FINAL RESULTS (fastest first) ==================
+  Target               : 874
+  Total race wall-time : 4,72 ms
+  Winner               : Agent Second
+
+  Name           Attempts        Elapsed (ms)     Status
+  -------------  -------------   --------------   ---------
+  Second         71              2,78             OK
+  First          369             3,53             OK
+====================================================================

@@ -1,17 +1,46 @@
-=== Test Run 2: 2 agents (default) ===
-[Master] Starting with 2 agents: First, Second
-[Master] Machine has 8 logical cores.
-[Master] Secret number is 466 (range 1-1000).
+===============================================================
+   Master / Agent guessing race
+   Started   : 2026-05-16 07:15:01 +03:00
+   Agents    : 4  (1, 2, 3, 4)
+   Cores     : 8 logical
+   Range     : [1 .. 1000]
+   Target    : 111
+===============================================================
 [Master] Agent executable: /Users/mayanksdwivedi/Downloads/GuessingGame/Agent/bin/Debug/net10.0/Agent
-[Agent First] Starting (PID 51087).
-[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
-[Agent First] Connecting to pipe 'GuessingGamePipe'...
-[Agent First] Connected.
-[Agent First] Target received: 466. Guessing...
-[Agent First] Agent First guessed the number 466. (attempts: 725, time: 0,29 ms)
-[Master] First correct report received from First. Cancelling remaining sessions.
 
-====== Results ======
-  First: guessed 466 in 6,54 ms
-  Second: did not report a correct guess
-Winner: Agent First
+[Master] Phase 1: awaiting connections from 4 agents...
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 0).
+[Agent 1] Starting (PID 5668). Connecting to pipe 'GuessingGamePipe'...
+[Agent 1] Connected. Awaiting target...
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 2).
+[Agent 3] Starting (PID 5671). Connecting to pipe 'GuessingGamePipe'...
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 1).
+[Agent 2] Starting (PID 5669). Connecting to pipe 'GuessingGamePipe'...
+[Agent 3] Connected. Awaiting target...
+[Agent 2] Connected. Awaiting target...
+[CpuPinning] Not running on Windows (macOS). Skipping core pin (would have been core 3).
+[Agent 4] Starting (PID 5673). Connecting to pipe 'GuessingGamePipe'...
+[Master] Phase 2: all agents connected. Releasing target 111 simultaneously.
+[Agent 4] Connected. Awaiting target...
+[Agent 4] Target received: 111. Guessing in [1..1000]...
+[Agent 4] DONE: guessed 111 in 853 attempts (0,06 ms of pure guessing).
+[Agent 1] Target received: 111. Guessing in [1..1000]...
+[Agent 3] Target received: 111. Guessing in [1..1000]...
+[Agent 1] DONE: guessed 111 in 81 attempts (0,04 ms of pure guessing).
+[Agent 2] Target received: 111. Guessing in [1..1000]...
+[Agent 3] DONE: guessed 111 in 3283 attempts (0,15 ms of pure guessing).
+[Master] *** WINNER: Agent 4 *** (first correct GUESS received)
+[Agent 2] DONE: guessed 111 in 57 attempts (0,09 ms of pure guessing).
+
+================== FINAL RESULTS (fastest first) ==================
+  Target               : 111
+  Total race wall-time : 4,80 ms
+  Winner               : Agent 4
+
+  Name           Attempts        Elapsed (ms)     Status
+  -------------  -------------   --------------   ---------
+  4              853             3,41             OK
+  3              57              3,89             OK
+  2              3283            3,92             OK
+  1              81              4,09             OK
+====================================================================
