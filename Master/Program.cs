@@ -86,10 +86,17 @@ internal static class Program
             // ---- Phase 2: spawn agent processes ----
             var processes = SpawnAgents(agentExe, agentNames);
 
-            // ---- Phase 3: barrier ----
+            // ---- Phase 3a: OS-level connection barrier ----
             await Task.WhenAll(connectionTasks);
+            Console.WriteLine($"[Master] Phase 2: all {agentNames.Count} pipes connected. Waiting for READY handshakes...");
+
+            // ---- Phase 3b: APPLICATION-level barrier (the real one) ----
+            // Every agent must confirm it is parked on its read loop. Only
+            // then is the race genuinely fair: no agent can have started
+            // earlier just because its process / .NET runtime warmed up first.
+            await Task.WhenAll(sessions.Select(s => s.WaitForReadyAsync(cts.Token)));
             var raceStartTimer = Stopwatch.StartNew();
-            Console.WriteLine($"[Master] Phase 2: all agents connected. Releasing target {target} simultaneously.");
+            Console.WriteLine($"[Master] Phase 3: all agents READY. Releasing target {target} simultaneously.");
 
             // ---- Phase 4: fair start - send target to all in parallel ----
             await Task.WhenAll(sessions.Select(s => s.SendTargetAsync()));

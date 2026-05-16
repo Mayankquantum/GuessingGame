@@ -35,7 +35,14 @@ public sealed class Guesser
         using var reader = new StreamReader(pipe, leaveOpen: true);
         using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
 
-        Console.WriteLine($"[Agent {_name}] Connected. Awaiting target...");
+        Console.WriteLine($"[Agent {_name}] Connected. Sending READY handshake...");
+
+        // Application-level handshake: tell the Master we are fully connected
+        // and parked on ReadLineAsync, ready to race. The Master will not
+        // release the target until EVERY agent has sent this.
+        await writer.WriteLineAsync($"{Protocol.ReadyTag}|{_name}").ConfigureAwait(false);
+
+        Console.WriteLine($"[Agent {_name}] READY sent. Awaiting target...");
 
         // Receive TARGET|<number>
         string? line = await reader.ReadLineAsync().ConfigureAwait(false);

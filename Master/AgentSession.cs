@@ -49,6 +49,31 @@ public sealed class AgentSession : IDisposable, IAsyncDisposable
         _writer = new StreamWriter(_server, leaveOpen: true) { AutoFlush = true };
     }
 
+    /// <summary>
+    /// Phase 1b (the REAL barrier): block until this agent has sent its
+    /// READY handshake. The OS-level WaitForConnectionAsync returns the
+    /// instant the pipe is established - well before the agent is actually
+    /// parked on its read loop ready to race. Only after READY is received
+    /// do we know this agent is truly waiting for the target, so the Master
+    /// can release all targets at a genuinely fair moment.
+    /// </summary>
+    public async Task WaitForReadyAsync(CancellationToken ct)
+    {
+        if (_reader is null)
+            throw new InvalidOperationException("WaitForConnectionAsync must be awaited first.");
+
+        while (!ct.IsCancellationRequested)
+        {
+            string? line = await _reader.ReadLineAsync(ct).ConfigureAwait(false);
+            if (line is null)
+                throw new IOException($"Agent {Name} closed the pipe before sending READY.");
+
+            var parts = line.Split('|');
+            if (parts.Length >= 1 && parts[0] == Protocol.ReadyTag)
+                return; // this agent is connected AND parked on its read loop
+        }
+    }
+
     public async Task SendTargetAsync()
     {
         if (_writer is null)
